@@ -272,8 +272,9 @@ class ModelChecks:
 
     def request_positions(self, model):
         language = model.language_model
-        positions, deltas = mx.array([[[9, 9, 9]]], mx.int32), mx.array(
-            [[99]], mx.int32
+        positions, deltas = (
+            mx.array([[[9, 9, 9]]], mx.int32),
+            mx.array([[99]], mx.int32),
         )
         language._position_ids, language._rope_deltas = positions, deltas
         result = model.get_input_embeddings(input_ids=mx.array([[1, 2, 3]], mx.int32))
@@ -1994,7 +1995,6 @@ def _checkpoint_loading(config, model_class, weights, *, side_effect=None):
 
 
 def test_load_model_uses_deepseek_v4_fp8_quantization_config():
-
     quantization = {
         "group_size": 64,
         "bits": 8,
@@ -2026,7 +2026,6 @@ def test_load_model_uses_deepseek_v4_fp8_quantization_config():
 
 
 def test_load_model_transforms_fine_grained_fp8_by_format():
-
     source_config = {
         "model_type": "future_compatible_model",
         "quantization_config": {
@@ -2055,7 +2054,6 @@ def test_load_model_transforms_fine_grained_fp8_by_format():
 
 
 def test_load_model_quantizes_projector_with_scales_when_skip_vision():
-
     def model(config):
         projector = nn.Module()
         projector.linear_1 = nn.Linear(64, 64, bias=False)
@@ -3191,10 +3189,9 @@ class TestMoERouterStopGradient:
                     offenders.append(
                         f"{path.parent.name}/{path.name}: take_along_axis(..., {idx})"
                     )
-        assert (
-            not offenders
-        ), "gather indices need mx.stop_gradient (MLX >= 0.32.1):\n" + "\n".join(
-            offenders
+        assert not offenders, (
+            "gather indices need mx.stop_gradient (MLX >= 0.32.1):\n"
+            + "\n".join(offenders)
         )
 
     @pytest.mark.parametrize(
