@@ -140,6 +140,16 @@ class Model(nn.Module):
         remapped = self.language_model.sanitize(remapped)
         return self.vision_tower.sanitize(remapped)
 
+    @staticmethod
+    def quantization_path_aliases(path: str):
+        """Map fused MLX projections to their checkpoint quantization names."""
+        path = path.removeprefix("language_model.")
+        aliases = [path]
+        if path.endswith(".gate_up_proj"):
+            prefix = path[: -len(".gate_up_proj")]
+            aliases.extend((f"{prefix}.gate_proj", f"{prefix}.up_proj"))
+        return tuple(dict.fromkeys(aliases))
+
     @property
     def layers(self):
         return self.language_model.layers

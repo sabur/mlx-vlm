@@ -32,6 +32,7 @@ from mlx_vlm.models.lfm2_encoder import Model as Lfm2Encoder
 from mlx_vlm.utils import (
     _drop_modules_without_weights,
     _load_safetensors,
+    _quantization_for_module_path,
     get_model_and_args,
     get_model_path,
     load,
@@ -2308,6 +2309,45 @@ def test_glm_quantized_head_sanitization_loads_strictly():
     for key, value in sanitized.items():
         assert mx.array_equal(again[key], value).item()
     model.load_weights(list(model.sanitize(checkpoint | head).items()), strict=True)
+
+
+def test_glm_fused_shared_expert_uses_checkpoint_mixed_quantization():
+    module = importlib.import_module("mlx_vlm.models.glm5_next")
+    model = module.Model(
+        module.ModelConfig(
+            text_config=tiny_config("glm", hidden_size=32),
+            vision_config=module.VisionConfig(
+                depth=1,
+                hidden_size=16,
+                intermediate_size=32,
+                out_hidden_size=32,
+                projection_intermediate_size=32,
+                num_heads=2,
+                image_size=8,
+                patch_size=2,
+            ),
+        )
+    )
+    quantization = {
+        "group_size": 64,
+        "bits": 4,
+        "model.layers.3.mlp.shared_experts.gate_proj": {
+            "group_size": 64,
+            "bits": 6,
+        },
+        "model.layers.3.mlp.shared_experts.up_proj": {
+            "group_size": 64,
+            "bits": 6,
+        },
+    }
+
+    resolved = _quantization_for_module_path(
+        quantization,
+        "language_model.model.layers.3.mlp.shared_experts.gate_up_proj",
+        model,
+    )
+
+    assert resolved == {"group_size": 64, "bits": 6}
 
 
 def test_moondream2_sanitize_remaps_checkpoint_layout():
